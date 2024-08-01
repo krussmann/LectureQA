@@ -5,6 +5,7 @@ import os
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from utils import preprocess, compute_sentence_embedding
+from langchain_community.llms import Ollama
 
 # Function to extract text from pdf files
 def extract_text(pdf_dir, preprocessing):
@@ -44,6 +45,19 @@ def similarity_search(question_embedding, pdf_embeddings):
 
     pdf_idx, page_idx = np.unravel_index(max_idx, pdf_embeddings.shape[:2])
     return pdf_idx, page_idx, max_similarity
+
+# local llm via Ollama (high latency: ~2 min per inference)
+#  - requires llama3.1 to be installed within Ollama (windows) application
+def query_local_llm(question, context):
+    llm = Ollama(model="llama3.1")
+    prompt = f"Answer the following question based on the attached context. Question: {question} Context: {context}"
+    try:
+        response = llm.invoke(prompt)
+        return response
+    except Exception as e:
+        print(f"Error querying OpenAI: {e}")
+        return None
+
 
 def query_llm(question, context):
     api_key = os.environ.get("openai_key")
@@ -102,6 +116,6 @@ if __name__ == '__main__':
     print(f"\nThe answer for this question might be found on page {page_idx + 1} in {pdf_names[pdf_idx]}:\n", context)
 
     # Print LLM output
-    llm_output = query_llm(question, context)
+    llm_output = query_local_llm(question, context) # change to query_llm() for OpenAI (less latency)
     print("\nLLM answer:")
     print(llm_output)
